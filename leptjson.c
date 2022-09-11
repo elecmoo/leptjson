@@ -4,6 +4,10 @@
 
 #define EXPECT(ctx, ch) do { assert(*ctx->json == (ch)); ctx->json++; } while(0)
 
+#define ISDIGIT(ch) ((ch) >= '0' && (ch) <= '9')
+
+#define ISDIGIT1TO9 ((ch) ((ch) >= '1' && (ch) <= '9')
+
 typedef struct {
     const char *json;
 } lept_context;
@@ -69,6 +73,20 @@ static int lept_parse_false(lept_context *c, lept_value *v) {
     return LEPT_RETURN_PARSE_OK;
 }
 
+static int lept_parse_number(lept_context *c, lept_value *v) {
+    char *end;
+
+    if (c->json[0] == '.' || c->json[0] == '+')
+        return LEPT_RETURN_PARSE_INVALID_VALUE;
+
+    v->n = strtod(c->json, &end);
+    if (c->json == end)
+        return LEPT_RETURN_PARSE_INVALID_VALUE;
+    c->json = end;
+    v->type = LEPT_NUMBER;
+    return LEPT_RETURN_PARSE_OK;
+}
+
 static int lept_parse_value(lept_context *c, lept_value *v) {
     switch (*c->json) {
         case 'n':
@@ -77,15 +95,21 @@ static int lept_parse_value(lept_context *c, lept_value *v) {
             return lept_parse_true(c, v);
         case 'f':
             return lept_parse_false(c, v);
+        default:
+            return lept_parse_number(c, v);
         case '\0':
             // 到达字符串末尾
             return LEPT_RETURN_PARSE_EXPECT_VALUE;
-        default:
-            return LEPT_RETURN_PARSE_INVALID_VALUE;
+
     }
 }
 
 lept_type lept_get_type(const lept_value *v) {
     assert(v != NULL);
     return v->type;
+}
+
+double lept_get_number (const lept_value *v) {
+    assert(v != NULL && v->type == LEPT_NUMBER);
+    return v->n;
 }
