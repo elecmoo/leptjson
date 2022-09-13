@@ -1,5 +1,7 @@
 #include <assert.h>
 #include <stdlib.h>
+#include <errno.h>
+#include <math.h>
 #include "leptjson.h"
 
 #define EXPECT(ctx, ch) do { assert(*ctx->json == (ch)); ctx->json++; } while(0)
@@ -25,8 +27,12 @@ int lept_parse(lept_value *v, const char *json) {
     lept_parse_whitespace(&c);
     if ((ret = lept_parse_value(&c, v)) == LEPT_RETURN_PARSE_OK) {
         lept_parse_whitespace(&c);
-        if (*c.json != '\0')
+        if (*c.json != '\0') {
+            // 注意，如果解析字面值之后，后面仍然有字符，说明字符不单一，解析失败，务必将type设置为LETP_NULL
+            v->type = LEPT_NULL;
             ret = LEPT_RETURN_PARSE_ROOT_NOT_SINGULAR;
+        }
+
     }
 
     return ret;
@@ -55,8 +61,6 @@ static int lept_parse_literal(lept_context *c, lept_value *v, const char *litera
 }
 
 static int lept_parse_number(lept_context *c, lept_value *v) {
-    char *end;
-
     const char *p = c->json;
     // 第一位如果是负号，直接跳过
     if (*p == '-')
@@ -68,7 +72,7 @@ static int lept_parse_number(lept_context *c, lept_value *v) {
         if (!ISDIGIT1TO9(*p))
             return LEPT_RETURN_PARSE_INVALID_VALUE;
         // 跳过后面的整数
-        for (p++; ISDIGIT(*p);p++);
+        for (p++; ISDIGIT(*p); p++);
     }
     // 如果整数后面出现小数点，则跳过小数点，且后面至少跟一位整数
     if (*p == '.') {
@@ -77,7 +81,7 @@ static int lept_parse_number(lept_context *c, lept_value *v) {
         if (!ISDIGIT(*p))
             return LEPT_RETURN_PARSE_INVALID_VALUE;
         // 跳过后面的整数
-        for (p++; ISDIGIT(*p);p++);
+        for (p++; ISDIGIT(*p); p++);
     }
     // 判断指数部分
     if (*p == 'e' || *p == 'E') {
@@ -89,7 +93,7 @@ static int lept_parse_number(lept_context *c, lept_value *v) {
         if (!ISDIGIT(*p))
             return LEPT_RETURN_PARSE_INVALID_VALUE;
         // 跳过后面的整数
-        for (p++; ISDIGIT(*p);p++);
+        for (p++; ISDIGIT(*p); p++);
     }
 
 //    const char *pre, *p = c->json;
@@ -102,10 +106,13 @@ static int lept_parse_number(lept_context *c, lept_value *v) {
 //    if (*pre == '.')
 //        return LEPT_RETURN_PARSE_INVALID_VALUE;
 
-    v->n = strtod(c->json, &end);
-    if (c->json == end)
-        return LEPT_RETURN_PARSE_INVALID_VALUE;
-    c->json = end;
+    errno = 0; // 先将errno设置为0，成功
+    v->n = strtod(c->json, NULL);
+    // 判断数值是否过大，超出了double的承载范围了
+    if (errno == ERANGE && (v->n == HUGE_VAL || v->n == -HUGE_VAL)) {
+        return LEPT_PARSE_NUMBER_TOO_BIG;
+    }
+    c->json = p;
     v->type = LEPT_NUMBER;
     return LEPT_RETURN_PARSE_OK;
 }
