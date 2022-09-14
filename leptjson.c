@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <math.h>
+#include <string.h>
 #include "leptjson.h"
 
 #define EXPECT(ctx, ch) do { assert(*ctx->json == (ch)); ctx->json++; } while(0)
@@ -117,6 +118,22 @@ static int lept_parse_number(lept_context *c, lept_value *v) {
     return LEPT_RETURN_PARSE_OK;
 }
 
+void lept_free(lept_value *v) {
+    assert(v != NULL);
+    // 仅仅当类型为string时，去释放内存
+    if (v->type == LEPT_STRING)
+        free(v->s);
+    v->type = LEPT_NULL;
+}
+
+inline void lept_init(lept_value *v) {
+    v->type = LEPT_NULL;
+}
+
+inline void lept_set_null(lept_value *v) {
+    lept_init(v);
+}
+
 static int lept_parse_value(lept_context *c, lept_value *v) {
     switch (*c->json) {
         case 'n':
@@ -138,7 +155,39 @@ lept_type lept_get_type(const lept_value *v) {
     return v->type;
 }
 
+
+int lept_get_boolean(const lept_value *v) {
+    // TODO:
+}
+
+void lept_set_boolean(lept_value *v, int b) {
+    // TODO:
+}
+
 double lept_get_number(const lept_value *v) {
     assert(v != NULL && v->type == LEPT_NUMBER);
     return v->n;
+}
+
+void lept_set_number(lept_value *v, double n) {
+    // TODO:
+}
+
+const char *lept_get_string(const lept_value *v) {
+    // TODO:
+}
+
+size_t lept_get_string_length(const lept_value *v) {
+    // TODO:
+}
+
+void lept_set_string(lept_value *v, const char *s, size_t len) {
+    assert(v != NULL && s != NULL);
+    // 分配内存前，先将v的内存释放下
+    lept_free(v);
+    v->s = malloc(len + 1);
+    memcpy(v->s, s, len);
+    v->s[len] = '\0';
+    v->len = len;
+    v->type = LEPT_STRING;
 }
