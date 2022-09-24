@@ -24,9 +24,9 @@ lept_type lept_get_type(const lept_value *v);
 
 void lept_free(lept_value *v);
 
-void lept_init(lept_value *v);
+#define lept_init(v) do {(v)->type = LEPT_NULL;} while(0)
 
-void lept_set_null(lept_value *v);
+#define lept_set_null(v) do { lept_free(v);} while(0)
 
 int lept_get_boolean(const lept_value *v);
 
@@ -49,6 +49,8 @@ enum {
     LEPT_RETURN_PARSE_INVALID_VALUE,
     LEPT_RETURN_PARSE_ROOT_NOT_SINGULAR,
     LEPT_RETURN_PARSE_MISS_QUOTATION_MARK,
+    LEPT_RETURN_PARSE_INVALID_STRING_ESCAPE,
+    LEPT_RETURN_PARSE_INVALID_STRING_CHAR
 };
 
 #endif //LEPTJSON_LEPTJSON_H

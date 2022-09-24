@@ -146,11 +146,44 @@ static void test_parse_number_too_big(void) {
     do {\
         lept_value v;\
         lept_init(&v);\
-        EXPECT_EQ_INT(LEPT_PARSE_OK, lept_parse(&v, json));\
+        EXPECT_EQ_INT(LEPT_RETURN_PARSE_OK, lept_parse(&v, json));\
         EXPECT_EQ_INT(LEPT_STRING, lept_get_type(&v));\
         EXPECT_EQ_STRING(expect, lept_get_string(&v), lept_get_string_length(&v));\
         lept_free(&v);\
     } while(0)
+
+static void test_parse_string(void) {
+    TEST_STRING("hello", "\"hello\"");
+    TEST_STRING("", "\"\"");
+    TEST_STRING("hello world!", "\"hello world!\"");
+    TEST_STRING("\" \\ / \b \f \n \r \t", "\"\\\" \\\\ \\/ \\b \\f \\n \\r \\t\"");
+}
+
+static void test_parse_missing_quotation_mark(void) {
+    TEST_ERROR(LEPT_RETURN_PARSE_MISS_QUOTATION_MARK, "\"");
+    TEST_ERROR(LEPT_RETURN_PARSE_MISS_QUOTATION_MARK, "\"abc");
+}
+
+static void test_parse_invalid_string_escape(void) {
+    TEST_ERROR(LEPT_RETURN_PARSE_INVALID_STRING_ESCAPE, "\"\\v\"");
+    TEST_ERROR(LEPT_RETURN_PARSE_INVALID_STRING_ESCAPE, "\"\\'\"");
+    TEST_ERROR(LEPT_RETURN_PARSE_INVALID_STRING_ESCAPE, "\"\\0\"");
+    TEST_ERROR(LEPT_RETURN_PARSE_INVALID_STRING_ESCAPE, "\"\\x12\"");
+}
+
+static void test_parse_invalid_string_char(void) {
+    TEST_ERROR(LEPT_RETURN_PARSE_INVALID_STRING_CHAR, "\"\x01\"");
+    TEST_ERROR(LEPT_RETURN_PARSE_INVALID_STRING_CHAR, "\"\x1F\"");
+}
+
+static void test_access_null(void) {
+    lept_value v;
+    lept_init(&v);
+    lept_set_string(&v, "a", 1);
+    lept_set_null(&v);
+    EXPECT_EQ_INT(LEPT_NULL, lept_get_type(&v));
+    lept_free(&v);
+}
 
 static void test_access_string(void) {
     lept_value v;
@@ -162,16 +195,45 @@ static void test_access_string(void) {
     lept_free(&v);
 }
 
+static void test_access_boolean(void) {
+    lept_value v;
+    lept_init(&v);
+    lept_set_string(&v, "a", 1);
+    lept_set_boolean(&v, 1);
+    EXPECT_TRUE(lept_get_boolean(&v));
+    lept_set_boolean(&v, 0);
+    EXPECT_FALSE(lept_get_boolean(&v));
+    lept_free(&v);
+}
+
+static void test_access_number(void) {
+    lept_value v;
+    lept_init(&v);
+    lept_set_string(&v, "a", 1);
+    lept_set_number(&v, 1234.5);
+    EXPECT_EQ_DOUBLE(1234.5, lept_get_number(&v));
+    lept_free(&v);
+}
+
 static void test_parse(void) {
     test_parse_null();
     test_parse_true();
     test_parse_false();
     test_parse_number();
+    test_parse_string();
+
     test_parse_return_root_not_singular();
     test_parse_return_except_value();
     test_parse_return_invalid_value();
     test_parse_number_too_big();
+    test_parse_missing_quotation_mark();
+    test_parse_invalid_string_escape();
+    test_parse_invalid_string_char();
+
     test_access_string();
+    test_access_number();
+    test_access_boolean();
+    test_access_null();
 }
 
 int main(void) {
